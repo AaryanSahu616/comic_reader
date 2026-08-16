@@ -301,6 +301,41 @@
             padding: 14px 28px;
             bottom: 60px;
         }
+
+        /* Preload progress bar */
+        .preload-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            z-index: 25;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.05);
+            opacity: 1;
+            transition: opacity 0.6s ease 1s;
+        }
+        .preload-bar.complete { opacity: 0; }
+        .preload-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s ease;
+            border-radius: 0 2px 2px 0;
+        }
+        .preload-bar-label {
+            position: fixed;
+            bottom: 8px;
+            right: 12px;
+            font-size: 0.7rem;
+            color: rgba(148, 163, 184, 0.6);
+            z-index: 25;
+            pointer-events: none;
+            font-variant-numeric: tabular-nums;
+            opacity: 1;
+            transition: opacity 0.6s ease 1s;
+        }
+        .preload-bar-label.complete { opacity: 0; }
     </style>
 </head>
 
@@ -328,6 +363,10 @@
 
     <!-- Zoom indicator pill -->
     <div id="zoom-indicator" class="zoom-indicator">1.0×</div>
+
+    <!-- Preload progress bar -->
+    <div id="preload-bar" class="preload-bar"><div id="preload-bar-fill" class="preload-bar-fill"></div></div>
+    <div id="preload-label" class="preload-bar-label"></div>
 
     <script>
         // ===== TV DETECTION =====
@@ -368,6 +407,86 @@
         const zoomDisplay = document.getElementById('zoom-display');
         const zoomIndicator = document.getElementById('zoom-indicator');
         const backBtn = document.getElementById('back-btn');
+        const preloadBarFill = document.getElementById('preload-bar-fill');
+        const preloadBar = document.getElementById('preload-bar');
+        const preloadLabel = document.getElementById('preload-label');
+
+        // ===== IMAGE PRELOADER ENGINE =====
+        const PAGE_CACHE = new Map(); // pageIndex → 'loading' | 'loaded' | 'error'
+        const PRELOAD_CONCURRENCY = 3;
+        let preloadQueue = [];
+        let activePreloads = 0;
+        let loadedCount = 0;
+
+        function updatePreloadUI() {
+            const total = images.length;
+            const pct = total > 0 ? (loadedCount / total) * 100 : 0;
+            preloadBarFill.style.width = pct + '%';
+            if (loadedCount < total) {
+                preloadLabel.textContent = `${loadedCount}/${total} cached`;
+                preloadBar.classList.remove('complete');
+                preloadLabel.classList.remove('complete');
+            } else {
+                preloadLabel.textContent = `All ${total} pages cached`;
+                preloadBar.classList.add('complete');
+                preloadLabel.classList.add('complete');
+            }
+        }
+
+        function preloadPage(pageIndex) {
+            if (PAGE_CACHE.has(pageIndex)) return; // Already loading or loaded
+            if (pageIndex < 0 || pageIndex >= images.length) return;
+
+            PAGE_CACHE.set(pageIndex, 'loading');
+            activePreloads++;
+
+            const img = new Image();
+            img.onload = () => {
+                PAGE_CACHE.set(pageIndex, 'loaded');
+                activePreloads--;
+                loadedCount++;
+                updatePreloadUI();
+                drainQueue();
+            };
+            img.onerror = () => {
+                PAGE_CACHE.set(pageIndex, 'error');
+                activePreloads--;
+                drainQueue();
+            };
+            img.src = getImageUrl(images[pageIndex]);
+        }
+
+        function drainQueue() {
+            while (activePreloads < PRELOAD_CONCURRENCY && preloadQueue.length > 0) {
+                const idx = preloadQueue.shift();
+                if (!PAGE_CACHE.has(idx)) {
+                    preloadPage(idx);
+                } // else skip already cached, continue draining
+            }
+        }
+
+        function schedulePreload(fromIndex) {
+            // Build priority-ordered queue:
+            // Phase 1: Immediate batch — next 3 pages + 1 previous
+            const immediate = [];
+            for (let i = 1; i <= 3; i++) {
+                if (fromIndex + i < images.length) immediate.push(fromIndex + i);
+            }
+            if (fromIndex - 1 >= 0) immediate.push(fromIndex - 1);
+
+            // Phase 2: Background sweep — all remaining forward, then backward
+            const background = [];
+            for (let i = 4; fromIndex + i < images.length; i++) {
+                background.push(fromIndex + i);
+            }
+            for (let i = 2; fromIndex - i >= 0; i++) {
+                background.push(fromIndex - i);
+            }
+
+            // Merge: immediate first, then background, skip already cached
+            preloadQueue = [...immediate, ...background].filter(idx => !PAGE_CACHE.has(idx));
+            drainQueue();
+        }
 
         function getImageUrl(pageIndex) {
             return `/image?file_id=${encodeURIComponent(fileId)}&page_index=${pageIndex}`;
@@ -546,15 +665,8 @@
                 currentImgElement = newImg;
             }
 
-            // Preload: current ± 1 only (memory budget)
-            if (currentIndex + 1 < images.length) {
-                const preNext = new Image();
-                preNext.src = getImageUrl(images[currentIndex + 1]);
-            }
-            if (currentIndex - 1 >= 0) {
-                const prePrev = new Image();
-                prePrev.src = getImageUrl(images[currentIndex - 1]);
-            }
+            // Trigger preloading from new position
+            schedulePreload(currentIndex);
         }
 
         // ===== FULLSCREEN (CSS fallback) =====
@@ -784,8 +896,13 @@
         });
 
         // ===== INIT =====
-        if (images.length > 0) showPage(0, true);
-        else container.innerHTML = "<p style='color:#94a3b8; font-size:1.2rem;'>No images found.</p>";
+        if (images.length > 0) {
+            showPage(0, true);
+            // Kick off initial preload
+            updatePreloadUI();
+        } else {
+            container.innerHTML = "<p style='color:#94a3b8; font-size:1.2rem;'>No images found.</p>";
+        }
 
         // Focus management for TV — don't let focus get lost
         if (window._tvInfo && window._tvInfo.isTVMode) {

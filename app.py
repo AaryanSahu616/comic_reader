@@ -321,7 +321,10 @@ def serve_image():
         filename = getattr(page, 'name', f"page_{page_index}.jpg")
         mimetype, _ = mimetypes.guess_type(filename)
         
-        return send_file(io.BytesIO(page.content), mimetype=mimetype or 'image/jpeg')
+        response = send_file(io.BytesIO(page.content), mimetype=mimetype or 'image/jpeg')
+        response.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+        response.headers['ETag'] = f'"{file_id}-{page_index}"'
+        return response
     except Exception as e:
         return f"Failed to serve image: {e}", 500
 
