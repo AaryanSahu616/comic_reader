@@ -113,9 +113,6 @@
         let panAnimationId = null;
         let zoomIndicatorTimeout = null;
         
-        // Debounce for edge page change
-        let edgeChangeTimeout = null;
-        const EDGE_DEBOUNCE_MS = 200;
         
         // DOM refs
         const container = document.getElementById('slider-container');
@@ -371,9 +368,19 @@
         });
         
         // ===== KEYBOARD / D-PAD / REMOTE CONTROL =====
+        // Fire TV Remote keyCodes:
+        //   D-pad: Up=38, Down=40, Left=37, Right=39
+        //   Select/Enter: 13
+        //   Back: 4
+        //   Play/Pause: 179
+        //   Rewind: 227
+        //   Fast Forward: 228
+        
         // Continuous pan tracking
         const keysDown = new Set();
         let continuousPanId = null;
+        // Zoom toggle target (used by Play/Pause)
+        const ZOOM_TOGGLE_LEVEL = 2.0;
         
         function startContinuousPan() {
             if (continuousPanId) return;
@@ -413,44 +420,49 @@
                 return;
             }
             
-            // Arrow keys
+            // ── Fire TV media buttons ──
+            // Rewind (⏪) → previous page (always, regardless of zoom)
+            if (keyCode === 227) {
+                e.preventDefault();
+                showPage(currentIndex - 1);
+                return;
+            }
+            // Fast Forward (⏩) → next page (always, regardless of zoom)
+            if (keyCode === 228) {
+                e.preventDefault();
+                showPage(currentIndex + 1);
+                return;
+            }
+            // Play/Pause → toggle zoom (1× ↔ 2×)
+            if (keyCode === 179) {
+                e.preventDefault();
+                if (isZoomed()) {
+                    resetZoom();
+                } else {
+                    setZoom(ZOOM_TOGGLE_LEVEL);
+                }
+                return;
+            }
+            
+            // ── Arrow keys / D-pad: ALWAYS pan/scroll ──
             if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
                 e.preventDefault();
                 
                 if (isZoomed()) {
-                    // Pan mode — check edge before panning
-                    if (key === 'ArrowLeft' && isPanAtEdge('left')) {
-                        // At left edge → previous page (debounced)
-                        if (!edgeChangeTimeout) {
-                            edgeChangeTimeout = setTimeout(() => { edgeChangeTimeout = null; }, EDGE_DEBOUNCE_MS);
-                            showPage(currentIndex - 1);
-                        }
-                        return;
-                    }
-                    if (key === 'ArrowRight' && isPanAtEdge('right')) {
-                        // At right edge → next page (debounced)
-                        if (!edgeChangeTimeout) {
-                            edgeChangeTimeout = setTimeout(() => { edgeChangeTimeout = null; }, EDGE_DEBOUNCE_MS);
-                            showPage(currentIndex + 1);
-                        }
-                        return;
-                    }
-                    // Pan image
+                    // Pan the zoomed image
                     if (!keysDown.has(key)) {
                         keysDown.add(key);
-                        // Initial step
+                        // Initial step for immediate feedback
                         const dx = key === 'ArrowLeft' ? PAN_STEP : key === 'ArrowRight' ? -PAN_STEP : 0;
                         const dy = key === 'ArrowUp' ? PAN_STEP : key === 'ArrowDown' ? -PAN_STEP : 0;
                         panBy(dx, dy);
                         startContinuousPan();
                     }
                 } else {
-                    // 1× zoom: arrow left/right for page nav
-                    if (key === 'ArrowRight') showPage(currentIndex + 1);
-                    if (key === 'ArrowLeft') showPage(currentIndex - 1);
-                    // Up/Down at 1× can toggle UI
-                    if (key === 'ArrowUp' || key === 'ArrowDown') {
-                        uiBar.classList.toggle('hidden');
+                    // At 1× zoom, arrows do nothing (page nav is Rewind/FF)
+                    // But we still track keys so held-key → zoom → pan works seamlessly
+                    if (!keysDown.has(key)) {
+                        keysDown.add(key);
                     }
                 }
                 return;
