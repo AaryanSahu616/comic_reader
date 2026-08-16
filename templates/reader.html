@@ -724,10 +724,18 @@
                         startContinuousPan();
                     }
                 } else {
-                    // At 1× zoom, arrows do nothing (page nav is Rewind/FF)
-                    // But we still track keys so held-key → zoom → pan works seamlessly
-                    if (!keysDown.has(key)) {
-                        keysDown.add(key);
+                    // At 1× zoom: PC uses arrows for page nav, TV uses Rewind/FF
+                    if (!window._tvInfo || !window._tvInfo.isTVMode) {
+                        if (key === 'ArrowRight') showPage(currentIndex + 1);
+                        if (key === 'ArrowLeft') showPage(currentIndex - 1);
+                        if (key === 'ArrowUp' || key === 'ArrowDown') {
+                            uiBar.classList.toggle('hidden');
+                        }
+                    } else {
+                        // TV: track keys so held-key → zoom → pan works seamlessly
+                        if (!keysDown.has(key)) {
+                            keysDown.add(key);
+                        }
                     }
                 }
                 return;
