@@ -224,20 +224,23 @@
         html.css-fullscreen {
             position: fixed;
             inset: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             z-index: 99999;
         }
 
         html.css-fullscreen body {
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
         }
 
         /* Ensure container fills viewport in all fullscreen modes */
+        html:-webkit-full-screen, html:-webkit-full-screen body { width: 100%; height: 100%; overflow: hidden; }
+        html:fullscreen, html:fullscreen body { width: 100%; height: 100%; overflow: hidden; }
+
         html:-webkit-full-screen .comic-container,
         html:fullscreen .comic-container,
-        html.css-fullscreen .comic-container { width: 100vw; height: 100vh; }
+        html.css-fullscreen .comic-container { width: 100%; height: 100%; }
         
         html:-webkit-full-screen .comic-container.zoomed,
         html:fullscreen .comic-container.zoomed,
@@ -432,22 +435,13 @@
             // Round to avoid floating point drift
             zoomLevel = Math.round(zoomLevel * 10) / 10;
 
-            // Remember scroll position ratio to maintain view center
-            let scrollRatioX = 0.5, scrollRatioY = 0.5;
-            if (oldZoom > ZOOM_MIN + 0.01 && container.scrollWidth > container.clientWidth) {
-                scrollRatioX = (container.scrollLeft + container.clientWidth / 2) / container.scrollWidth;
-            }
-            if (oldZoom > ZOOM_MIN + 0.01 && container.scrollHeight > container.clientHeight) {
-                scrollRatioY = (container.scrollTop + container.clientHeight / 2) / container.scrollHeight;
-            }
-
             applyZoom();
 
-            // Restore scroll position at new zoom level (center-anchored)
+            // Always display top of page after zooming
             if (isZoomed()) {
                 requestAnimationFrame(() => {
-                    container.scrollLeft = scrollRatioX * container.scrollWidth - container.clientWidth / 2;
-                    container.scrollTop = scrollRatioY * container.scrollHeight - container.clientHeight / 2;
+                    container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+                    container.scrollTop = 0;
                 });
             }
 
@@ -482,19 +476,27 @@
             currentIndex = index;
             counterElement.innerText = `${currentIndex + 1} / ${images.length}`;
 
-            // Reset zoom on page change
-            zoomLevel = ZOOM_MIN;
-            panX = 0;
-            panY = 0;
-            setZoom(ZOOM_MIN, false);
+            // Preserve current zoom level
+            const currentZoom = zoomLevel;
 
             const newImg = document.createElement('img');
             newImg.className = 'comic-page';
             newImg.src = getImageUrl(images[currentIndex]);
             newImg.draggable = false;
 
-            // Reset container scroll and zoom class
-            container.classList.remove('zoomed');
+            // Temporarily un-zoom for a clean slide transition
+            if (isZoomed()) {
+                container.classList.remove('zoomed');
+                if (currentImgElement) {
+                    currentImgElement.style.position = 'absolute';
+                    currentImgElement.style.width = '100%';
+                    currentImgElement.style.height = '100%';
+                    currentImgElement.style.objectFit = 'contain';
+                    currentImgElement.style.top = '0';
+                    currentImgElement.style.left = '0';
+                    currentImgElement.style.transform = 'none';
+                }
+            }
             container.scrollTop = 0;
             container.scrollLeft = 0;
 
@@ -503,6 +505,14 @@
                 container.appendChild(newImg);
                 currentImgElement = newImg;
                 isAnimating = false;
+                
+                if (currentZoom > ZOOM_MIN + 0.01) {
+                    newImg.onload = () => {
+                        applyZoom();
+                        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+                        container.scrollTop = 0;
+                    };
+                }
             } else {
                 // Add sliding class for page transition animation
                 newImg.classList.add('sliding');
@@ -525,6 +535,13 @@
                     newImg.classList.remove('sliding');
                     newImg.style.willChange = 'auto';
                     isAnimating = false;
+                    
+                    // Re-apply zoom to the new page and jump to top
+                    if (currentZoom > ZOOM_MIN + 0.01) {
+                        applyZoom();
+                        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+                        container.scrollTop = 0;
+                    }
                 }, 300);
                 currentImgElement = newImg;
             }
