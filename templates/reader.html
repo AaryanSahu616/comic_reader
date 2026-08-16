@@ -167,10 +167,17 @@
         .comic-container.zoomed {
             overflow: auto;
             scrollbar-width: none;
+            justify-content: flex-start;
+            align-items: flex-start;
         }
 
         .comic-container.zoomed::-webkit-scrollbar {
             display: none;
+        }
+
+        .comic-container.zoomed .comic-page {
+            flex-shrink: 0;
+            margin: auto;
         }
 
         .comic-page {
@@ -226,6 +233,15 @@
             width: 100vw;
             height: 100vh;
         }
+
+        /* Ensure container fills viewport in all fullscreen modes */
+        html:-webkit-full-screen .comic-container,
+        html:fullscreen .comic-container,
+        html.css-fullscreen .comic-container { width: 100vw; height: 100vh; }
+        
+        html:-webkit-full-screen .comic-container.zoomed,
+        html:fullscreen .comic-container.zoomed,
+        html.css-fullscreen .comic-container.zoomed { overflow: auto; }
 
         /* ===== TV MODE OVERRIDES ===== */
         .tv-mode {
@@ -607,8 +623,8 @@
         // Continuous pan tracking
         const keysDown = new Set();
         let continuousPanId = null;
-        // Zoom toggle target (used by Play/Pause)
-        const ZOOM_TOGGLE_LEVEL = 2.0;
+        // Zoom cycle levels for Play/Pause button
+        const ZOOM_LEVELS = [1.0, 1.5, 2.0, 2.5, 3.0];
 
         function startContinuousPan() {
             if (continuousPanId) return;
@@ -661,14 +677,18 @@
                 showPage(currentIndex + 1);
                 return;
             }
-            // Play/Pause → toggle zoom (1× ↔ 2×)
+            // Play/Pause → cycle zoom levels (1× → 1.5× → 2× → 2.5× → 3× → 1×)
             if (keyCode === 179) {
                 e.preventDefault();
-                if (isZoomed()) {
-                    resetZoom();
-                } else {
-                    setZoom(ZOOM_TOGGLE_LEVEL);
+                // Find next zoom level in cycle
+                let nextIdx = 0;
+                for (let i = 0; i < ZOOM_LEVELS.length; i++) {
+                    if (Math.abs(zoomLevel - ZOOM_LEVELS[i]) < 0.05) {
+                        nextIdx = (i + 1) % ZOOM_LEVELS.length;
+                        break;
+                    }
                 }
+                setZoom(ZOOM_LEVELS[nextIdx]);
                 return;
             }
 
