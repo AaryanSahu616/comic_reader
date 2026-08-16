@@ -7,120 +7,512 @@
     <style>
         body { background-color: #000000; color: #ffffff; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; overscroll-behavior-y: contain; overflow: hidden; }
         
-        /* Modern Glassmorphism UI Bar */
-        .ui-overlay { position: fixed; top: 0; left: 0; width: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 16px 24px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 20; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+        /* Modern UI Bar — NO backdrop-filter for TV perf */
+        .ui-overlay { position: fixed; top: 0; left: 0; width: 100%; background: rgba(15, 23, 42, 0.92); padding: 16px 24px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 20; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
         .ui-overlay.hidden { opacity: 0; transform: translateY(-100%); pointer-events: none; }
         
-        .ui-left { display: flex; align-items: center; gap: 16px; max-width: 75%; }
+        .ui-left { display: flex; align-items: center; gap: 16px; max-width: 60%; }
         .text-container { display: flex; flex-direction: column; overflow: hidden; }
         h1 { font-size: 1.15rem; margin: 0 0 4px 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         #page-counter { font-size: 0.85rem; color: #94a3b8; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
         
-        .ui-right { display: flex; align-items: center; gap: 12px; }
-        .icon-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 1.2rem; cursor: pointer; padding: 10px 14px; border-radius: 8px; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        .ui-right { display: flex; align-items: center; gap: 8px; }
+        .icon-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 1.2rem; cursor: pointer; padding: 10px 14px; border-radius: 8px; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; min-width: 44px; min-height: 44px; box-sizing: border-box; }
         .icon-btn:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
+        .icon-btn:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
+        
+        /* Zoom controls group */
+        .zoom-controls { display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.08); }
+        .zoom-level-display { font-size: 0.8rem; color: #94a3b8; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 36px; text-align: center; user-select: none; }
+        .zoom-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.08); color: white; font-size: 1.1rem; cursor: pointer; padding: 6px 12px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; min-width: 36px; min-height: 36px; box-sizing: border-box; }
+        .zoom-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .zoom-btn:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
         
         .comic-container { position: relative; display: flex; justify-content: center; align-items: center; width: 100vw; height: 100dvh; touch-action: pan-y pinch-zoom; overflow: hidden; background-color: #050505; }
-        .comic-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; cursor: pointer; transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        .comic-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; cursor: pointer; transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); image-rendering: auto; }
+        
+        /* Zoom indicator pill */
+        .zoom-indicator { position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.92); color: #e2e8f0; font-size: 1.1rem; font-weight: 700; padding: 10px 22px; border-radius: 24px; z-index: 30; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; border: 1px solid rgba(255,255,255,0.1); font-variant-numeric: tabular-nums; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .zoom-indicator.visible { opacity: 1; }
+        
+        /* CSS fullscreen fallback */
+        html.css-fullscreen { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 99999; }
+        html.css-fullscreen body { width: 100vw; height: 100vh; }
+
+        /* ===== TV MODE OVERRIDES ===== */
+        .tv-mode { font-size: 18px; padding: 0; }
+        .tv-mode .ui-overlay { padding: 20px calc(3% + 8px); }
+        .tv-mode .icon-btn,
+        .tv-mode .zoom-btn { min-width: 48px; min-height: 48px; padding: 12px 16px; font-size: 1.3rem; }
+        .tv-mode .icon-btn:focus,
+        .tv-mode .zoom-btn:focus { outline: 3px solid #3b82f6; box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35); outline-offset: 2px; }
+        /* Disable hover transforms on TV (no hover) */
+        .tv-mode .icon-btn:hover,
+        .tv-mode .zoom-btn:hover { transform: none; }
+        /* Overscan safe area */
+        .tv-mode .comic-container { width: 100vw; height: 100vh; }
+        .tv-mode h1 { font-size: 1.3rem; }
+        .tv-mode #page-counter { font-size: 1rem; }
+        .tv-mode .zoom-level-display { font-size: 0.95rem; min-width: 42px; }
+        .tv-mode .zoom-indicator { font-size: 1.3rem; padding: 14px 28px; bottom: 60px; }
     </style>
 </head>
 <body>
     <div id="ui-bar" class="ui-overlay">
         <div class="ui-left">
-            <a href="{{ back_url }}" class="icon-btn" title="Back to Library">←</a>
+            <a href="{{ back_url }}" class="icon-btn" id="back-btn" title="Back to Library" tabindex="0">←</a>
             <div class="text-container">
                 <h1>{{ comic_name }}</h1>
                 <div id="page-counter">1 / ?</div>
             </div>
         </div>
         <div class="ui-right">
-            <button id="fullscreen-btn" class="icon-btn" title="Toggle Fullscreen">⛶</button>
+            <div class="zoom-controls">
+                <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out (−)" tabindex="0">−</button>
+                <span id="zoom-display" class="zoom-level-display">1.0×</span>
+                <button id="zoom-in-btn" class="zoom-btn" title="Zoom In (+)" tabindex="0">+</button>
+                <button id="zoom-reset-btn" class="zoom-btn" title="Reset Zoom (0)" tabindex="0">↺</button>
+            </div>
+            <button id="fullscreen-btn" class="icon-btn" title="Toggle Fullscreen (F)" tabindex="0">⛶</button>
         </div>
     </div>
     
     <div class="comic-container" id="slider-container"></div>
     
+    <!-- Zoom indicator pill -->
+    <div id="zoom-indicator" class="zoom-indicator">1.0×</div>
+    
     <script>
+        // ===== TV DETECTION =====
+        (function() {
+            const ua = navigator.userAgent;
+            const isFireTV = /\bSilk\b/i.test(ua);
+            const isWebOS = /Web0S|webOS/i.test(ua);
+            const isTVMode = isFireTV || isWebOS;
+            if (isTVMode) document.body.classList.add('tv-mode');
+            if (isFireTV) document.body.classList.add('firetv');
+            if (isWebOS) document.body.classList.add('webos');
+            window._tvInfo = { isFireTV, isWebOS, isTVMode };
+        })();
+
+        // ===== CORE STATE =====
         const images = {{ images | tojson }};
         const fileId = {{ file_id | tojson }};
-        let currentIndex = 0; let isAnimating = false; let currentImgElement = null;
+        let currentIndex = 0;
+        let isAnimating = false;
+        let currentImgElement = null;
+        
+        // Zoom & Pan state
+        let zoomLevel = 1.0;
+        let panX = 0;
+        let panY = 0;
+        const ZOOM_MIN = 1.0;
+        const ZOOM_MAX = 4.0;
+        const ZOOM_STEP = 0.5;
+        const PAN_STEP = 80;
+        let panAnimationId = null;
+        let zoomIndicatorTimeout = null;
+        
+        // Debounce for edge page change
+        let edgeChangeTimeout = null;
+        const EDGE_DEBOUNCE_MS = 200;
+        
+        // DOM refs
         const container = document.getElementById('slider-container');
         const counterElement = document.getElementById('page-counter');
         const uiBar = document.getElementById('ui-bar');
+        const zoomDisplay = document.getElementById('zoom-display');
+        const zoomIndicator = document.getElementById('zoom-indicator');
+        const backBtn = document.getElementById('back-btn');
         
-        function getImageUrl(pageIndex) { return `/image?file_id=${encodeURIComponent(fileId)}&page_index=${pageIndex}`; }
+        function getImageUrl(pageIndex) {
+            return `/image?file_id=${encodeURIComponent(fileId)}&page_index=${pageIndex}`;
+        }
         
-        function showPage(index, init = false) {
-            if (index < 0 || index >= images.length || (index === currentIndex && !init) || isAnimating) return;
-            isAnimating = true; const isNext = index > currentIndex; currentIndex = index;
-            counterElement.innerText = `${currentIndex + 1} / ${images.length}`;
-            
-            const newImg = document.createElement('img'); 
-            newImg.className = 'comic-page'; 
-            newImg.src = getImageUrl(images[currentIndex]);
-            
-            if (init) {
-                newImg.style.transform = 'translateX(0)'; 
-                container.appendChild(newImg); 
-                currentImgElement = newImg; 
-                isAnimating = false;
-            } else {
-                newImg.style.transform = isNext ? 'translateX(100vw)' : 'translateX(-100vw)';
-                container.appendChild(newImg); 
-                void newImg.offsetWidth; 
-                
-                currentImgElement.style.transform = isNext ? 'translateX(-100vw)' : 'translateX(100vw)';
-                newImg.style.transform = 'translateX(0)';
-                
-                const oldImg = currentImgElement;
-                setTimeout(() => { 
-                    if (oldImg && oldImg.parentNode) oldImg.parentNode.removeChild(oldImg); 
-                    isAnimating = false; 
-                }, 300); 
-                currentImgElement = newImg;
+        // ===== ZOOM & PAN =====
+        function isZoomed() {
+            return zoomLevel > ZOOM_MIN + 0.01;
+        }
+        
+        function updateTransform() {
+            if (!currentImgElement) return;
+            currentImgElement.style.transform = `scale(${zoomLevel}) translate3d(${panX}px, ${panY}px, 0)`;
+        }
+        
+        function clampPan() {
+            if (!currentImgElement || !isZoomed()) {
+                panX = 0;
+                panY = 0;
+                return;
             }
-            // Preload next image
-            if (currentIndex + 1 < images.length) { 
-                const preloader = new Image(); 
-                preloader.src = getImageUrl(images[currentIndex + 1]); 
+            // Calculate max pan based on zoom and viewport
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            // The image is object-fit: contain, so we need to figure out displayed dimensions
+            const imgNatW = currentImgElement.naturalWidth || vw;
+            const imgNatH = currentImgElement.naturalHeight || vh;
+            const aspectRatio = imgNatW / imgNatH;
+            let displayW, displayH;
+            if (vw / vh > aspectRatio) {
+                displayH = vh;
+                displayW = vh * aspectRatio;
+            } else {
+                displayW = vw;
+                displayH = vw / aspectRatio;
+            }
+            // Scaled dimensions
+            const scaledW = displayW * zoomLevel;
+            const scaledH = displayH * zoomLevel;
+            // Max pan = overflow / 2 / zoomLevel (because translate is in pre-scale coords)
+            const maxPanX = Math.max(0, (scaledW - vw) / (2 * zoomLevel));
+            const maxPanY = Math.max(0, (scaledH - vh) / (2 * zoomLevel));
+            panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+            panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+        }
+        
+        function isPanAtEdge(direction) {
+            if (!currentImgElement || !isZoomed()) return true;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const imgNatW = currentImgElement.naturalWidth || vw;
+            const imgNatH = currentImgElement.naturalHeight || vh;
+            const aspectRatio = imgNatW / imgNatH;
+            let displayW, displayH;
+            if (vw / vh > aspectRatio) {
+                displayH = vh;
+                displayW = vh * aspectRatio;
+            } else {
+                displayW = vw;
+                displayH = vw / aspectRatio;
+            }
+            const scaledW = displayW * zoomLevel;
+            const scaledH = displayH * zoomLevel;
+            const maxPanX = Math.max(0, (scaledW - vw) / (2 * zoomLevel));
+            const maxPanY = Math.max(0, (scaledH - vh) / (2 * zoomLevel));
+            const threshold = 2;
+            switch(direction) {
+                case 'left':  return panX >= maxPanX - threshold;
+                case 'right': return panX <= -maxPanX + threshold;
+                case 'up':    return panY >= maxPanY - threshold;
+                case 'down':  return panY <= -maxPanY + threshold;
+            }
+            return false;
+        }
+        
+        function setZoom(newZoom, showIndicator = true) {
+            const oldZoom = zoomLevel;
+            zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+            // Round to avoid floating point drift
+            zoomLevel = Math.round(zoomLevel * 10) / 10;
+            if (zoomLevel === ZOOM_MIN) {
+                panX = 0;
+                panY = 0;
+            }
+            clampPan();
+            updateTransform();
+            // Update will-change
+            if (currentImgElement) {
+                if (isZoomed()) {
+                    currentImgElement.style.willChange = 'transform';
+                } else {
+                    currentImgElement.style.willChange = 'auto';
+                }
+            }
+            // Update displays
+            const label = zoomLevel.toFixed(1) + '×';
+            zoomDisplay.textContent = label;
+            if (showIndicator && oldZoom !== zoomLevel) {
+                zoomIndicator.textContent = label;
+                zoomIndicator.classList.add('visible');
+                clearTimeout(zoomIndicatorTimeout);
+                zoomIndicatorTimeout = setTimeout(() => {
+                    zoomIndicator.classList.remove('visible');
+                }, 1500);
             }
         }
         
+        function resetZoom() {
+            setZoom(ZOOM_MIN);
+        }
+        
+        function panBy(dx, dy) {
+            panX += dx;
+            panY += dy;
+            clampPan();
+            updateTransform();
+        }
+        
+        // ===== PAGE NAVIGATION =====
+        function showPage(index, init = false) {
+            if (index < 0 || index >= images.length || (index === currentIndex && !init) || isAnimating) return;
+            isAnimating = true;
+            const isNext = index > currentIndex;
+            currentIndex = index;
+            counterElement.innerText = `${currentIndex + 1} / ${images.length}`;
+            
+            // Reset zoom on page change
+            zoomLevel = ZOOM_MIN;
+            panX = 0;
+            panY = 0;
+            setZoom(ZOOM_MIN, false);
+            
+            const newImg = document.createElement('img');
+            newImg.className = 'comic-page';
+            newImg.src = getImageUrl(images[currentIndex]);
+            newImg.draggable = false;
+            
+            if (init) {
+                newImg.style.transform = 'translate3d(0, 0, 0)';
+                container.appendChild(newImg);
+                currentImgElement = newImg;
+                isAnimating = false;
+            } else {
+                newImg.style.transform = isNext ? 'translate3d(100vw, 0, 0)' : 'translate3d(-100vw, 0, 0)';
+                newImg.style.willChange = 'transform';
+                container.appendChild(newImg);
+                void newImg.offsetWidth; // Force reflow
+                
+                if (currentImgElement) {
+                    currentImgElement.style.willChange = 'transform';
+                    currentImgElement.style.transform = isNext ? 'translate3d(-100vw, 0, 0)' : 'translate3d(100vw, 0, 0)';
+                }
+                newImg.style.transform = 'translate3d(0, 0, 0)';
+                
+                const oldImg = currentImgElement;
+                setTimeout(() => {
+                    if (oldImg && oldImg.parentNode) oldImg.parentNode.removeChild(oldImg);
+                    // Remove will-change after transition settles
+                    newImg.style.willChange = 'auto';
+                    isAnimating = false;
+                }, 300);
+                currentImgElement = newImg;
+            }
+            
+            // Preload: current ± 1 only (memory budget)
+            if (currentIndex + 1 < images.length) {
+                const preNext = new Image();
+                preNext.src = getImageUrl(images[currentIndex + 1]);
+            }
+            if (currentIndex - 1 >= 0) {
+                const prePrev = new Image();
+                prePrev.src = getImageUrl(images[currentIndex - 1]);
+            }
+        }
+        
+        // ===== FULLSCREEN (CSS fallback) =====
+        function toggleFullscreen() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+                document.documentElement.classList.remove('css-fullscreen');
+            } else {
+                document.documentElement.requestFullscreen().then(() => {
+                    document.documentElement.classList.remove('css-fullscreen');
+                }).catch(() => {
+                    // Fullscreen API failed — use CSS fallback
+                    document.documentElement.classList.toggle('css-fullscreen');
+                });
+            }
+        }
+        
+        // ===== BACK BUTTON HANDLER =====
+        function handleBack() {
+            if (isZoomed()) {
+                resetZoom();
+            } else {
+                // Navigate back to library
+                window.location.href = backBtn.href;
+            }
+        }
+        
+        // ===== UI BUTTON EVENTS =====
         document.getElementById('fullscreen-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.log(err));
-            else if (document.exitFullscreen) document.exitFullscreen();
+            toggleFullscreen();
+        });
+        document.getElementById('zoom-in-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            setZoom(zoomLevel + ZOOM_STEP);
+        });
+        document.getElementById('zoom-out-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            setZoom(zoomLevel - ZOOM_STEP);
+        });
+        document.getElementById('zoom-reset-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetZoom();
         });
         
+        // ===== TOUCH HANDLING (preserved) =====
         let touchstartX = 0; let touchendX = 0; let touchstartY = 0; let touchendY = 0;
-        container.addEventListener('touchstart', e => { 
-            touchstartX = e.changedTouches[0].screenX; 
-            touchstartY = e.changedTouches[0].screenY; 
+        container.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
         });
         
         container.addEventListener('touchend', e => {
-            touchendX = e.changedTouches[0].screenX; 
+            touchendX = e.changedTouches[0].screenX;
             touchendY = e.changedTouches[0].screenY;
             if (Math.abs(touchendX - touchstartX) > Math.abs(touchendY - touchstartY)) {
-                if (touchendX - touchstartX < -50) showPage(currentIndex + 1); 
-                else if (touchendX - touchstartX > 50) showPage(currentIndex - 1); 
+                if (touchendX - touchstartX < -50) showPage(currentIndex + 1);
+                else if (touchendX - touchstartX > 50) showPage(currentIndex - 1);
             }
         });
         
+        // ===== CLICK NAV (preserved) =====
         container.addEventListener('click', e => {
+            if (isZoomed()) {
+                // When zoomed, click toggles UI only
+                uiBar.classList.toggle('hidden');
+                return;
+            }
             if (e.clientX < window.innerWidth * 0.3) showPage(currentIndex - 1);
             else if (e.clientX > window.innerWidth * 0.7) showPage(currentIndex + 1);
             else uiBar.classList.toggle('hidden');
         });
         
+        // ===== KEYBOARD / D-PAD / REMOTE CONTROL =====
+        // Continuous pan tracking
+        const keysDown = new Set();
+        let continuousPanId = null;
+        
+        function startContinuousPan() {
+            if (continuousPanId) return;
+            function tick() {
+                let dx = 0, dy = 0;
+                if (keysDown.has('ArrowLeft'))  dx += PAN_STEP * 0.4;
+                if (keysDown.has('ArrowRight')) dx -= PAN_STEP * 0.4;
+                if (keysDown.has('ArrowUp'))    dy += PAN_STEP * 0.4;
+                if (keysDown.has('ArrowDown'))  dy -= PAN_STEP * 0.4;
+                if (dx !== 0 || dy !== 0) {
+                    panBy(dx, dy);
+                }
+                if (keysDown.size > 0) {
+                    continuousPanId = requestAnimationFrame(tick);
+                } else {
+                    continuousPanId = null;
+                }
+            }
+            continuousPanId = requestAnimationFrame(tick);
+        }
+        
+        function stopContinuousPan() {
+            if (continuousPanId) {
+                cancelAnimationFrame(continuousPanId);
+                continuousPanId = null;
+            }
+        }
+        
         document.addEventListener('keydown', e => {
-            if (e.key === 'ArrowRight') showPage(currentIndex + 1);
-            if (e.key === 'ArrowLeft') showPage(currentIndex - 1);
-            if (e.key === 'f' || e.key === 'F') document.getElementById('fullscreen-btn').click();
+            const key = e.key;
+            const keyCode = e.keyCode;
+            
+            // Back button: Fire TV (keyCode 4), WebOS (keyCode 461)
+            if (keyCode === 4 || keyCode === 461) {
+                e.preventDefault();
+                handleBack();
+                return;
+            }
+            
+            // Arrow keys
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
+                e.preventDefault();
+                
+                if (isZoomed()) {
+                    // Pan mode — check edge before panning
+                    if (key === 'ArrowLeft' && isPanAtEdge('left')) {
+                        // At left edge → previous page (debounced)
+                        if (!edgeChangeTimeout) {
+                            edgeChangeTimeout = setTimeout(() => { edgeChangeTimeout = null; }, EDGE_DEBOUNCE_MS);
+                            showPage(currentIndex - 1);
+                        }
+                        return;
+                    }
+                    if (key === 'ArrowRight' && isPanAtEdge('right')) {
+                        // At right edge → next page (debounced)
+                        if (!edgeChangeTimeout) {
+                            edgeChangeTimeout = setTimeout(() => { edgeChangeTimeout = null; }, EDGE_DEBOUNCE_MS);
+                            showPage(currentIndex + 1);
+                        }
+                        return;
+                    }
+                    // Pan image
+                    if (!keysDown.has(key)) {
+                        keysDown.add(key);
+                        // Initial step
+                        const dx = key === 'ArrowLeft' ? PAN_STEP : key === 'ArrowRight' ? -PAN_STEP : 0;
+                        const dy = key === 'ArrowUp' ? PAN_STEP : key === 'ArrowDown' ? -PAN_STEP : 0;
+                        panBy(dx, dy);
+                        startContinuousPan();
+                    }
+                } else {
+                    // 1× zoom: arrow left/right for page nav
+                    if (key === 'ArrowRight') showPage(currentIndex + 1);
+                    if (key === 'ArrowLeft') showPage(currentIndex - 1);
+                    // Up/Down at 1× can toggle UI
+                    if (key === 'ArrowUp' || key === 'ArrowDown') {
+                        uiBar.classList.toggle('hidden');
+                    }
+                }
+                return;
+            }
+            
+            // Enter / Select — toggle UI
+            if (key === 'Enter') {
+                // Don't capture if a button is focused
+                if (document.activeElement && document.activeElement.closest('.ui-overlay')) return;
+                e.preventDefault();
+                uiBar.classList.toggle('hidden');
+                return;
+            }
+            
+            // Zoom in: + / = (keyCodes 187 numpad 107)
+            if (key === '+' || key === '=' || keyCode === 187 || keyCode === 107) {
+                e.preventDefault();
+                setZoom(zoomLevel + ZOOM_STEP);
+                return;
+            }
+            // Zoom out: - (keyCodes 189, numpad 109)
+            if (key === '-' || keyCode === 189 || keyCode === 109) {
+                e.preventDefault();
+                setZoom(zoomLevel - ZOOM_STEP);
+                return;
+            }
+            // Reset zoom: 0 (keyCodes 48, numpad 96)
+            if (key === '0' || keyCode === 48 || keyCode === 96) {
+                e.preventDefault();
+                resetZoom();
+                return;
+            }
+            
+            // Fullscreen toggle
+            if (key === 'f' || key === 'F') {
+                toggleFullscreen();
+                return;
+            }
         });
         
-        if (images.length > 0) showPage(0, true); 
+        document.addEventListener('keyup', e => {
+            keysDown.delete(e.key);
+            if (keysDown.size === 0) {
+                stopContinuousPan();
+            }
+        });
+        
+        // ===== INIT =====
+        if (images.length > 0) showPage(0, true);
         else container.innerHTML = "<p style='color:#94a3b8; font-size:1.2rem;'>No images found.</p>";
+        
+        // Focus management for TV — don't let focus get lost
+        if (window._tvInfo && window._tvInfo.isTVMode) {
+            document.addEventListener('focusout', (e) => {
+                setTimeout(() => {
+                    if (!document.activeElement || document.activeElement === document.body) {
+                        container.focus();
+                    }
+                }, 100);
+            });
+            container.setAttribute('tabindex', '-1');
+        }
     </script>
 </body>
 </html>

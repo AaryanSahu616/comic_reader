@@ -34,6 +34,50 @@
         .select-btn { background-color: transparent; color: var(--primary); padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.9rem; font-weight: 600; border: 1px solid var(--primary); transition: all 0.2s; }
         .select-btn:hover { background-color: var(--primary); color: #fff; }
         .empty-msg { color: var(--text-muted); font-style: italic; text-align: center; padding: 40px; background: var(--surface); border-radius: var(--radius); border: 1px dashed var(--border); }
+
+        /* ===== FOCUS STYLES (keyboard / D-pad nav) ===== */
+        .folder-link:focus,
+        .select-btn:focus,
+        .btn:focus,
+        .breadcrumbs a:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        }
+        .folder-item:focus-within {
+            background-color: var(--surface-hover);
+            border-color: var(--primary);
+        }
+
+        /* ===== TV MODE OVERRIDES ===== */
+        .tv-mode { font-size: 18px; padding: 3%; }
+        .tv-mode .container { max-width: 100%; margin: 20px auto; }
+        .tv-mode .header-box { padding: 36px; }
+        .tv-mode h1 { font-size: 2rem; }
+        .tv-mode p { font-size: 1.1rem; }
+        .tv-mode .folder-item { padding: 20px 24px; min-height: 48px; }
+        .tv-mode .folder-link { font-size: 1.2rem; }
+        .tv-mode .icon { font-size: 1.8rem; }
+        .tv-mode .select-btn { padding: 12px 20px; font-size: 1rem; min-height: 48px; display: inline-flex; align-items: center; }
+        .tv-mode .btn { padding: 16px 28px; font-size: 1.1rem; min-height: 48px; }
+        .tv-mode .breadcrumbs { font-size: 1.1rem; padding: 16px 20px; }
+        /* Enhanced TV focus */
+        .tv-mode .folder-link:focus,
+        .tv-mode .select-btn:focus,
+        .tv-mode .btn:focus,
+        .tv-mode .breadcrumbs a:focus {
+            outline: 3px solid var(--primary);
+            box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35);
+        }
+        .tv-mode .folder-item:focus-within {
+            transform: scale(1.02);
+            z-index: 5;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        /* Disable hover transforms on TV */
+        .tv-mode .folder-item:hover,
+        .tv-mode .btn:hover,
+        .tv-mode .select-btn:hover { transform: none; box-shadow: none; }
     </style>
 </head>
 <body>
@@ -43,24 +87,152 @@
             <p>Navigate through your Google Drive below and click <b>"Select as Root"</b> on the folder where you keep your comics.</p>
             <div class="breadcrumbs">
                 {% if parent_id %}
-                    <a href="/picker/{{ parent_id }}">← Back</a> 
+                    <a href="/picker/{{ parent_id }}" id="parent-link" tabindex="0">← Back</a> 
                     <span style="color: var(--border);">|</span>
                 {% endif %}
                 <span>Current: <b>{{ folder_name }}</b></span>
             </div>
-            <a href="/set_root/{{ folder_id }}" class="btn">✅ Use "{{ folder_name }}" as Root</a>
+            <a href="/set_root/{{ folder_id }}" class="btn" id="set-root-btn" tabindex="0" data-nav-item>✅ Use "{{ folder_name }}" as Root</a>
         </div>
-        <div class="folder-list">
+        <div class="folder-list" id="folder-list">
             {% if not folders %}<div class="empty-msg">No sub-folders found in here.</div>{% endif %}
             {% for folder in folders %}
-                <div class="folder-item">
-                    <a href="/picker/{{ folder.id }}" class="folder-link">
+                <div class="folder-item" data-folder-row>
+                    <a href="/picker/{{ folder.id }}" class="folder-link" tabindex="0" data-nav-item>
                         <span class="icon">📁</span><span>{{ folder.name }}</span>
                     </a>
-                    <a href="/set_root/{{ folder.id }}" class="select-btn">Select as Root</a>
+                    <a href="/set_root/{{ folder.id }}" class="select-btn" tabindex="0" data-nav-item>Select as Root</a>
                 </div>
             {% endfor %}
         </div>
     </div>
+
+    <script>
+        // ===== TV DETECTION =====
+        (function() {
+            const ua = navigator.userAgent;
+            const isFireTV = /\bSilk\b/i.test(ua);
+            const isWebOS = /Web0S|webOS/i.test(ua);
+            const isTVMode = isFireTV || isWebOS;
+            if (isTVMode) document.body.classList.add('tv-mode');
+            if (isFireTV) document.body.classList.add('firetv');
+            if (isWebOS) document.body.classList.add('webos');
+            window._tvInfo = { isFireTV, isWebOS, isTVMode };
+        })();
+
+        // ===== D-PAD NAVIGATION =====
+        (function() {
+            const parentLink = document.getElementById('parent-link');
+            const setRootBtn = document.getElementById('set-root-btn');
+            const folderRows = Array.from(document.querySelectorAll('[data-folder-row]'));
+            
+            // Build navigation structure:
+            // Row 0: parentLink (optional), set-root-btn
+            // Row 1+: each folder row has [folder-link, select-btn]
+            const navRows = [];
+            
+            // Header row
+            const headerRow = [];
+            if (parentLink) headerRow.push(parentLink);
+            if (setRootBtn) headerRow.push(setRootBtn);
+            if (headerRow.length > 0) navRows.push(headerRow);
+            
+            // Folder rows
+            folderRows.forEach(row => {
+                const items = Array.from(row.querySelectorAll('[data-nav-item]'));
+                if (items.length > 0) navRows.push(items);
+            });
+            
+            if (navRows.length === 0) return;
+
+            function focusElement(el) {
+                if (!el) return;
+                el.focus({ preventScroll: false });
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            function findCurrentPos() {
+                const active = document.activeElement;
+                for (let r = 0; r < navRows.length; r++) {
+                    const c = navRows[r].indexOf(active);
+                    if (c !== -1) return { row: r, col: c };
+                }
+                return null;
+            }
+
+            document.addEventListener('keydown', (e) => {
+                const key = e.key;
+                const keyCode = e.keyCode;
+
+                // Back button: Fire TV (4), WebOS (461)
+                if (keyCode === 4 || keyCode === 461) {
+                    e.preventDefault();
+                    if (parentLink) {
+                        window.location.href = parentLink.href;
+                    }
+                    return;
+                }
+
+                // Enter → click focused element
+                if (key === 'Enter') {
+                    const active = document.activeElement;
+                    if (active && active.hasAttribute('data-nav-item')) {
+                        e.preventDefault();
+                        active.click();
+                        return;
+                    }
+                    if (active === parentLink) {
+                        e.preventDefault();
+                        active.click();
+                        return;
+                    }
+                }
+
+                // Arrow navigation
+                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
+                e.preventDefault();
+
+                const pos = findCurrentPos();
+                if (!pos) {
+                    // Nothing focused — focus first item
+                    focusElement(navRows[0][0]);
+                    return;
+                }
+
+                let targetRow = pos.row;
+                let targetCol = pos.col;
+
+                switch (key) {
+                    case 'ArrowDown':
+                        targetRow = Math.min(pos.row + 1, navRows.length - 1);
+                        targetCol = Math.min(pos.col, navRows[targetRow].length - 1);
+                        break;
+                    case 'ArrowUp':
+                        targetRow = Math.max(pos.row - 1, 0);
+                        targetCol = Math.min(pos.col, navRows[targetRow].length - 1);
+                        break;
+                    case 'ArrowRight':
+                        if (pos.col + 1 < navRows[pos.row].length) {
+                            targetCol = pos.col + 1;
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        if (pos.col - 1 >= 0) {
+                            targetCol = pos.col - 1;
+                        }
+                        break;
+                }
+
+                focusElement(navRows[targetRow][targetCol]);
+            });
+
+            // Auto-focus first focusable on TV
+            if (window._tvInfo && window._tvInfo.isTVMode) {
+                setTimeout(() => {
+                    focusElement(navRows[0][0]);
+                }, 200);
+            }
+        })();
+    </script>
 </body>
 </html>
