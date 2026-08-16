@@ -29,7 +29,10 @@
         .zoom-btn:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
         
         .comic-container { position: relative; display: flex; justify-content: center; align-items: center; width: 100vw; height: 100dvh; touch-action: pan-y pinch-zoom; overflow: hidden; background-color: #050505; }
-        .comic-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; cursor: pointer; transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); image-rendering: auto; }
+        .comic-container.zoomed { overflow: auto; scrollbar-width: none; }
+        .comic-container.zoomed::-webkit-scrollbar { display: none; }
+        .comic-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; cursor: pointer; image-rendering: auto; }
+        .comic-page.sliding { transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
         
         /* Zoom indicator pill */
         .zoom-indicator { position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.92); color: #e2e8f0; font-size: 1.1rem; font-weight: 700; padding: 10px 22px; border-radius: 24px; z-index: 30; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; border: 1px solid rgba(255,255,255,0.1); font-variant-numeric: tabular-nums; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
@@ -107,9 +110,9 @@
         let panX = 0;
         let panY = 0;
         const ZOOM_MIN = 1.0;
-        const ZOOM_MAX = 4.0;
+        const ZOOM_MAX = 3.0;
         const ZOOM_STEP = 0.5;
-        const PAN_STEP = 80;
+        const PAN_STEP = 100;
         let panAnimationId = null;
         let zoomIndicatorTimeout = null;
         
@@ -126,74 +129,60 @@
             return `/image?file_id=${encodeURIComponent(fileId)}&page_index=${pageIndex}`;
         }
         
-        // ===== ZOOM & PAN =====
+        // ===== ZOOM & PAN (native scroll) =====
         function isZoomed() {
             return zoomLevel > ZOOM_MIN + 0.01;
         }
         
-        function updateTransform() {
+        // Calculate the displayed image dimensions (object-fit: contain)
+        function getDisplayDimensions() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            if (!currentImgElement) return { displayW: vw, displayH: vh };
+            const imgNatW = currentImgElement.naturalWidth || vw;
+            const imgNatH = currentImgElement.naturalHeight || vh;
+            const aspectRatio = imgNatW / imgNatH;
+            let displayW, displayH;
+            if (vw / vh > aspectRatio) {
+                displayH = vh;
+                displayW = vh * aspectRatio;
+            } else {
+                displayW = vw;
+                displayH = vw / aspectRatio;
+            }
+            return { displayW, displayH };
+        }
+        
+        // Apply zoom by resizing the image and enabling native scroll
+        function applyZoom() {
             if (!currentImgElement) return;
-            currentImgElement.style.transform = `scale(${zoomLevel}) translate3d(${panX}px, ${panY}px, 0)`;
-        }
-        
-        function clampPan() {
-            if (!currentImgElement || !isZoomed()) {
-                panX = 0;
-                panY = 0;
-                return;
-            }
-            // Calculate max pan based on zoom and viewport
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            // The image is object-fit: contain, so we need to figure out displayed dimensions
-            const imgNatW = currentImgElement.naturalWidth || vw;
-            const imgNatH = currentImgElement.naturalHeight || vh;
-            const aspectRatio = imgNatW / imgNatH;
-            let displayW, displayH;
-            if (vw / vh > aspectRatio) {
-                displayH = vh;
-                displayW = vh * aspectRatio;
+            if (isZoomed()) {
+                const { displayW, displayH } = getDisplayDimensions();
+                const zoomedW = displayW * zoomLevel;
+                const zoomedH = displayH * zoomLevel;
+                // Switch image to actual-size mode
+                currentImgElement.style.position = 'relative';
+                currentImgElement.style.width = zoomedW + 'px';
+                currentImgElement.style.height = zoomedH + 'px';
+                currentImgElement.style.objectFit = 'fill';
+                currentImgElement.style.top = 'auto';
+                currentImgElement.style.left = 'auto';
+                currentImgElement.style.transform = 'none';
+                // Enable native scrolling on container
+                container.classList.add('zoomed');
             } else {
-                displayW = vw;
-                displayH = vw / aspectRatio;
+                // Reset to default fit-contain mode
+                currentImgElement.style.position = 'absolute';
+                currentImgElement.style.width = '100%';
+                currentImgElement.style.height = '100%';
+                currentImgElement.style.objectFit = 'contain';
+                currentImgElement.style.top = '0';
+                currentImgElement.style.left = '0';
+                currentImgElement.style.transform = 'none';
+                container.classList.remove('zoomed');
+                container.scrollTop = 0;
+                container.scrollLeft = 0;
             }
-            // Scaled dimensions
-            const scaledW = displayW * zoomLevel;
-            const scaledH = displayH * zoomLevel;
-            // Max pan = overflow / 2 / zoomLevel (because translate is in pre-scale coords)
-            const maxPanX = Math.max(0, (scaledW - vw) / (2 * zoomLevel));
-            const maxPanY = Math.max(0, (scaledH - vh) / (2 * zoomLevel));
-            panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
-            panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
-        }
-        
-        function isPanAtEdge(direction) {
-            if (!currentImgElement || !isZoomed()) return true;
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            const imgNatW = currentImgElement.naturalWidth || vw;
-            const imgNatH = currentImgElement.naturalHeight || vh;
-            const aspectRatio = imgNatW / imgNatH;
-            let displayW, displayH;
-            if (vw / vh > aspectRatio) {
-                displayH = vh;
-                displayW = vh * aspectRatio;
-            } else {
-                displayW = vw;
-                displayH = vw / aspectRatio;
-            }
-            const scaledW = displayW * zoomLevel;
-            const scaledH = displayH * zoomLevel;
-            const maxPanX = Math.max(0, (scaledW - vw) / (2 * zoomLevel));
-            const maxPanY = Math.max(0, (scaledH - vh) / (2 * zoomLevel));
-            const threshold = 2;
-            switch(direction) {
-                case 'left':  return panX >= maxPanX - threshold;
-                case 'right': return panX <= -maxPanX + threshold;
-                case 'up':    return panY >= maxPanY - threshold;
-                case 'down':  return panY <= -maxPanY + threshold;
-            }
-            return false;
         }
         
         function setZoom(newZoom, showIndicator = true) {
@@ -201,20 +190,26 @@
             zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
             // Round to avoid floating point drift
             zoomLevel = Math.round(zoomLevel * 10) / 10;
-            if (zoomLevel === ZOOM_MIN) {
-                panX = 0;
-                panY = 0;
+            
+            // Remember scroll position ratio to maintain view center
+            let scrollRatioX = 0.5, scrollRatioY = 0.5;
+            if (oldZoom > ZOOM_MIN + 0.01 && container.scrollWidth > container.clientWidth) {
+                scrollRatioX = (container.scrollLeft + container.clientWidth / 2) / container.scrollWidth;
             }
-            clampPan();
-            updateTransform();
-            // Update will-change
-            if (currentImgElement) {
-                if (isZoomed()) {
-                    currentImgElement.style.willChange = 'transform';
-                } else {
-                    currentImgElement.style.willChange = 'auto';
-                }
+            if (oldZoom > ZOOM_MIN + 0.01 && container.scrollHeight > container.clientHeight) {
+                scrollRatioY = (container.scrollTop + container.clientHeight / 2) / container.scrollHeight;
             }
+            
+            applyZoom();
+            
+            // Restore scroll position at new zoom level (center-anchored)
+            if (isZoomed()) {
+                requestAnimationFrame(() => {
+                    container.scrollLeft = scrollRatioX * container.scrollWidth - container.clientWidth / 2;
+                    container.scrollTop = scrollRatioY * container.scrollHeight - container.clientHeight / 2;
+                });
+            }
+            
             // Update displays
             const label = zoomLevel.toFixed(1) + '×';
             zoomDisplay.textContent = label;
@@ -232,11 +227,10 @@
             setZoom(ZOOM_MIN);
         }
         
+        // Scroll the container by pixel amounts (for d-pad panning)
         function panBy(dx, dy) {
-            panX += dx;
-            panY += dy;
-            clampPan();
-            updateTransform();
+            container.scrollLeft -= dx;
+            container.scrollTop -= dy;
         }
         
         // ===== PAGE NAVIGATION =====
@@ -258,18 +252,26 @@
             newImg.src = getImageUrl(images[currentIndex]);
             newImg.draggable = false;
             
+            // Reset container scroll and zoom class
+            container.classList.remove('zoomed');
+            container.scrollTop = 0;
+            container.scrollLeft = 0;
+            
             if (init) {
                 newImg.style.transform = 'translate3d(0, 0, 0)';
                 container.appendChild(newImg);
                 currentImgElement = newImg;
                 isAnimating = false;
             } else {
+                // Add sliding class for page transition animation
+                newImg.classList.add('sliding');
                 newImg.style.transform = isNext ? 'translate3d(100vw, 0, 0)' : 'translate3d(-100vw, 0, 0)';
                 newImg.style.willChange = 'transform';
                 container.appendChild(newImg);
                 void newImg.offsetWidth; // Force reflow
                 
                 if (currentImgElement) {
+                    currentImgElement.classList.add('sliding');
                     currentImgElement.style.willChange = 'transform';
                     currentImgElement.style.transform = isNext ? 'translate3d(-100vw, 0, 0)' : 'translate3d(100vw, 0, 0)';
                 }
@@ -278,7 +280,8 @@
                 const oldImg = currentImgElement;
                 setTimeout(() => {
                     if (oldImg && oldImg.parentNode) oldImg.parentNode.removeChild(oldImg);
-                    // Remove will-change after transition settles
+                    // Remove sliding class and will-change after transition
+                    newImg.classList.remove('sliding');
                     newImg.style.willChange = 'auto';
                     isAnimating = false;
                 }, 300);
