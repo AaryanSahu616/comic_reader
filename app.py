@@ -200,18 +200,20 @@ def oauth2callback():
         'token_uri': creds.token_uri, 'client_id': creds.client_id,
         'client_secret': creds.client_secret, 'scopes': creds.scopes
     }
-    return redirect(url_for('index'))
+    if 'library_root_id' not in session:
+        return redirect(url_for('picker', folder_id='root'))
+    return redirect(url_for('browse', folder_id=session['library_root_id']))
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return "Logged out successfully. <a href='/'>Go Home</a>"
+    return redirect(url_for('index'))
 
 @app.route('/')
 def index():
-    if 'library_root_id' not in session:
-        return redirect(url_for('picker', folder_id='root'))
-    return redirect(url_for('browse', folder_id=session['library_root_id']))
+    is_authenticated = 'credentials' in session
+    library_root_id = session.get('library_root_id')
+    return render_template('index.html', is_authenticated=is_authenticated, library_root_id=library_root_id)
 
 @app.route('/picker/<folder_id>')
 def picker(folder_id):
@@ -239,7 +241,7 @@ def picker(folder_id):
 @app.route('/set_root/<folder_id>')
 def set_root(folder_id):
     session['library_root_id'] = folder_id
-    return redirect(url_for('index'))
+    return redirect(url_for('browse', folder_id=folder_id))
 
 @app.route('/browse/<folder_id>')
 def browse(folder_id):

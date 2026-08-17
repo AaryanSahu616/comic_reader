@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comic Reader — Stream Comics from Google Drive</title>
+    <meta name="description" content="A modern, high-performance web comic reader that streams CBZ, CBR, and PDF files directly from Google Drive across PC, Mobile, Smart TV, and Gamepads.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- ===== NAVIGATION BAR ===== -->
+    <header class="header-nav">
+        <div class="nav-container">
+            <a href="/" class="brand-logo">
+                <span class="logo-icon">📚</span>
+                <span>ComicStream</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#device-guide" class="nav-link">Device Guides</a></li>
+                <li><a href="#github" class="nav-link">GitHub</a></li>
+                <li><a href="#developer" class="nav-link">Developer</a></li>
+            </ul>
+            <div class="nav-actions">
+                {% if is_authenticated %}
+                    {% if library_root_id %}
+                        <a href="/browse/{{ library_root_id }}" class="btn btn-primary">📖 Open Library</a>
+                    {% else %}
+                        <a href="/picker/root" class="btn btn-primary">⚙️ Pick Root Folder</a>
+                    {% endif %}
+                    <a href="/logout" class="btn btn-danger-subtle">Logout</a>
+                {% else %}
+                    <a href="/login" class="btn btn-primary" id="google-signin-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                        </svg>
+                        Sign in with Google
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== HERO SECTION ===== -->
+    <main>
+        <section class="hero-section">
+            <div class="pill-badge">
+                <span>✨</span> Stream your comics directly from Google Drive
+            </div>
+            <h1 class="hero-title">
+                Your Cloud Comic Vault.<br>
+                <span class="gradient-text">Read Anywhere, Seamlessly.</span>
+            </h1>
+            <p class="hero-subtitle">
+                A high-speed, web-based comic reader that connects to your Google Drive to read <b>.CBZ</b>, <b>.CBR</b>, and <b>.PDF</b> files with zero storage footprint. Built with first-class support for PC, Mobile, Smart TV, and Gamepads.
+            </p>
+            <div class="hero-cta">
+                {% if is_authenticated %}
+                    {% if library_root_id %}
+                        <a href="/browse/{{ library_root_id }}" class="btn btn-primary btn-lg">🚀 Continue to Library</a>
+                        <a href="/picker/root" class="btn btn-secondary btn-lg">📁 Change Root Folder</a>
+                    {% else %}
+                        <a href="/picker/root" class="btn btn-primary btn-lg">⚙️ Select Comic Folder</a>
+                    {% endif %}
+                {% else %}
+                    <a href="/login" class="btn btn-primary btn-lg">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                        </svg>
+                        Connect with Google Drive
+                    </a>
+                    <a href="#device-guide" class="btn btn-secondary btn-lg">📖 How to Use</a>
+                {% endif %}
+                <a href="https://github.com/AaryanSahu616/comic_reader" target="_blank" class="btn btn-secondary btn-lg">⭐ Star on GitHub</a>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <h3>3 Formats</h3>
+                    <p>CBZ, CBR & PDF</p>
+                </div>
+                <div class="stat-item">
+                    <h3>3x Preload</h3>
+                    <p>Parallel Caching</p>
+                </div>
+                <div class="stat-item">
+                    <h3>4 Device Modes</h3>
+                    <p>PC, Touch, TV & Gamepad</p>
+                </div>
+                <div class="stat-item">
+                    <h3>0 MB</h3>
+                    <p>Local Storage Required</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== FEATURES SECTION ===== -->
+        <section class="section" id="features">
+            <div class="section-header">
+                <div class="section-tag">Capabilities</div>
+                <h2 class="section-title">Engineered for the Ultimate Comic Experience</h2>
+                <p class="section-desc">Designed from the ground up for seamless cloud reading with zero lag, instant page flips, and intuitive controls.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">☁️</span>
+                    <h3>Google Drive Integration</h3>
+                    <p>Authenticate with Google OAuth 2.0 and stream comics directly from your personal Drive. No manual file transferring or cloud syncing apps required.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📦</span>
+                    <h3>Multi-Format Engine</h3>
+                    <p>Built-in parser for standard <b>.cbz</b> archives, 7-Zip decompression for <b>.cbr</b> archives, and native rasterization for <b>.pdf</b> comic books.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3>Smart Predictive Preloader</h3>
+                    <p>Intelligent 2-phase caching engine preloads upcoming and previous pages with concurrency pooling, guaranteeing instantaneous slide transitions.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🔍</span>
+                    <h3>Smooth Zoom & Pan Engine</h3>
+                    <p>Deep zoom up to 300% with native smooth scrolling, trackpad pinch gestures, mouse drag-to-pan, and continuous joystick panning.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📺</span>
+                    <h3>Smart TV & Fire TV Mode</h3>
+                    <p>Auto-detects Fire TV and WebOS to enable safe overscan margins, spatial D-pad navigation, remote media keys (⏪ ⏩ ⏯️), and focus indicators.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🎮</span>
+                    <h3>Universal Gamepad Support</h3>
+                    <p>Plug in Xbox, PlayStation (DualShock / DualSense), or generic controllers to navigate, zoom with analog triggers/thumbsticks, and turn pages.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== HOW TO USE IN VARIOUS DEVICES ===== -->
+        <section class="section" id="device-guide">
+            <div class="section-header">
+                <div class="section-tag">Interactive Controls</div>
+                <h2 class="section-title">How to Use on Any Device</h2>
+                <p class="section-desc">Select your device below to see the dedicated control mapping and shortcuts.</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="device-tabs">
+                <button class="tab-btn active" data-tab="pc">🖥️ PC & Laptop</button>
+                <button class="tab-btn" data-tab="mobile">📱 Mobile & Tablet</button>
+                <button class="tab-btn" data-tab="tv">📺 Smart TV & Fire TV</button>
+                <button class="tab-btn" data-tab="gamepad">🎮 Gamepad & Controller</button>
+            </div>
+
+            <!-- Tab 1: PC & Laptop -->
+            <div class="tab-pane active" id="tab-pc">
+                <div class="guide-grid">
+                    <div class="guide-card">
+                        <h4>📄 Page Navigation</h4>
+                        <ul class="guide-list">
+                            <li><span>Next Page</span> <span class="keycap">→</span> / <span class="keycap">Right Click Area</span></li>
+                            <li><span>Previous Page</span> <span class="keycap">←</span> / <span class="keycap">Left Click Area</span></li>
+                            <li><span>Toggle Top UI Bar</span> <span class="keycap">Enter</span> / <span class="keycap">Center Click</span></li>
+                            <li><span>Toggle Fullscreen</span> <span class="keycap">F</span> / <span class="keycap">⛶ Button</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>🔍 Zoom Controls</h4>
+                        <ul class="guide-list">
+                            <li><span>Trackpad Pinch</span> <span class="keycap">Pinch in / out</span></li>
+                            <li><span>Mouse Wheel Zoom</span> <span class="keycap">Ctrl + Wheel</span></li>
+                            <li><span>Step Zoom In / Out</span> <span class="keycap">+</span> / <span class="keycap">−</span></li>
+                            <li><span>Reset Zoom (1.0×)</span> <span class="keycap">0</span> / <span class="keycap">↺ Button</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>✋ Panning When Zoomed</h4>
+                        <ul class="guide-list">
+                            <li><span>Mouse Drag to Pan</span> <span class="keycap">Click & Drag</span></li>
+                            <li><span>Horizontal Wheel Pan</span> <span class="keycap">Shift + Wheel</span></li>
+                            <li><span>Vertical Scroll</span> <span class="keycap">Mouse Wheel</span></li>
+                            <li><span>Trackpad Two-Finger</span> <span class="keycap">Swipe any direction</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Mobile & Tablet -->
+            <div class="tab-pane" id="tab-mobile">
+                <div class="guide-grid">
+                    <div class="guide-card">
+                        <h4>👆 Touch Navigation</h4>
+                        <ul class="guide-list">
+                            <li><span>Next Page</span> <span class="keycap">Swipe Left</span> / <span class="keycap">Tap Right 30%</span></li>
+                            <li><span>Previous Page</span> <span class="keycap">Swipe Right</span> / <span class="keycap">Tap Left 30%</span></li>
+                            <li><span>Toggle UI Bar</span> <span class="keycap">Tap Center 40%</span></li>
+                            <li><span>Exit Zoom / Reset</span> <span class="keycap">↺ Button</span> / <span class="keycap">← Back</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>🤏 Multi-Touch Zoom</h4>
+                        <ul class="guide-list">
+                            <li><span>Pinch-to-Zoom</span> <span class="keycap">2 Fingers Spread/Pinch</span></li>
+                            <li><span>Zoom Controls</span> <span class="keycap">+ / − Buttons</span></li>
+                            <li><span>Zoom Indicator</span> <span class="keycap">Live HUD pill</span></li>
+                            <li><span>Reset Level</span> <span class="keycap">↺ Reset Icon</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>📱 Panning & Edge Swiping</h4>
+                        <ul class="guide-list">
+                            <li><span>Pan Zoomed Image</span> <span class="keycap">1 Finger Drag</span></li>
+                            <li><span>Edge Next Page</span> <span class="keycap">Swipe Left at right edge</span></li>
+                            <li><span>Edge Prev Page</span> <span class="keycap">Swipe Right at left edge</span></li>
+                            <li><span>Overscroll containment</span> <span class="keycap">Active</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Smart TV & Fire TV -->
+            <div class="tab-pane" id="tab-tv">
+                <div class="guide-grid">
+                    <div class="guide-card">
+                        <h4>📺 Remote Media Keys</h4>
+                        <ul class="guide-list">
+                            <li><span>Next Page (Always)</span> <span class="keycap">Fast-Forward ⏩</span></li>
+                            <li><span>Previous Page (Always)</span> <span class="keycap">Rewind ⏪</span></li>
+                            <li><span>Cycle Zoom (1x → 3x)</span> <span class="keycap">Play / Pause ⏯️</span></li>
+                            <li><span>Back to Library / Reset</span> <span class="keycap">Remote Back ↩</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>🕹️ D-Pad Navigation</h4>
+                        <ul class="guide-list">
+                            <li><span>Turn Pages (at 1.0×)</span> <span class="keycap">D-Pad Left / Right</span></li>
+                            <li><span>Pan Image (when zoomed)</span> <span class="keycap">D-Pad Up/Down/Left/Right</span></li>
+                            <li><span>Continuous Pan</span> <span class="keycap">Hold D-Pad Direction</span></li>
+                            <li><span>Toggle UI Bar</span> <span class="keycap">Select / OK Button</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>📐 TV Enhancements</h4>
+                        <ul class="guide-list">
+                            <li><span>Overscan Safe Padding</span> <span class="keycap">Auto-applied (3%)</span></li>
+                            <li><span>Large Focus Indicators</span> <span class="keycap">High-contrast Glow</span></li>
+                            <li><span>Focus Retention Guard</span> <span class="keycap">Prevents lost focus</span></li>
+                            <li><span>Hardware Acceleration</span> <span class="keycap">Optimized for TV SoCs</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Gamepad & Controller -->
+            <div class="tab-pane" id="tab-gamepad">
+                <div class="guide-grid">
+                    <div class="guide-card">
+                        <h4>🕹️ Analog Sticks & D-Pad</h4>
+                        <ul class="guide-list">
+                            <li><span>Turn Pages</span> <span class="keycap">D-Pad ◄ / ►</span></li>
+                            <li><span>Pan Zoomed Image</span> <span class="keycap">Left Stick 🕹️</span></li>
+                            <li><span>Smooth Dynamic Zoom</span> <span class="keycap">Right Stick ↕</span></li>
+                            <li><span>Re-center Panned Image</span> <span class="keycap">L3 (Left Stick Click)</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>🎮 Face & Bumper Buttons</h4>
+                        <ul class="guide-list">
+                            <li><span>Toggle UI Overlay</span> <span class="keycap">A / ✕</span></li>
+                            <li><span>Back / Reset Zoom</span> <span class="keycap">B / ○</span></li>
+                            <li><span>Toggle Fullscreen</span> <span class="keycap">X / □</span> / <span class="keycap">Start</span></li>
+                            <li><span>Reset Zoom to 1.0×</span> <span class="keycap">Y / △</span> / <span class="keycap">R3</span></li>
+                        </ul>
+                    </div>
+                    <div class="guide-card">
+                        <h4>⚡ Triggers & Bumpers</h4>
+                        <ul class="guide-list">
+                            <li><span>Step Zoom In</span> <span class="keycap">RB / R1</span></li>
+                            <li><span>Step Zoom Out</span> <span class="keycap">LB / L1</span></li>
+                            <li><span>Analog Fine Zoom In</span> <span class="keycap">RT / R2</span></li>
+                            <li><span>Analog Fine Zoom Out</span> <span class="keycap">LT / L2</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== GITHUB & REPOSITORY SECTION ===== -->
+        <section class="section" id="github">
+            <div class="github-card">
+                <div class="github-info">
+                    <h3>
+                        <span>🐙</span> Open Source Comic Reader
+                    </h3>
+                    <p>
+                        ComicStream is free, open-source, and hosted on GitHub. Clone the repository, deploy it on Render, Docker, or your local network, and read your comics anywhere.
+                    </p>
+                    <div class="github-tags">
+                        <span class="github-tag">Python 3.10+</span>
+                        <span class="github-tag">Flask</span>
+                        <span class="github-tag">Docker Ready</span>
+                        <span class="github-tag">Google Drive API v3</span>
+                        <span class="github-tag">Vanilla JS Engine</span>
+                        <span class="github-tag">Zero Bundler</span>
+                    </div>
+                </div>
+                <div>
+                    <a href="https://github.com/AaryanSahu616/comic_reader" target="_blank" class="btn btn-primary btn-lg">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                        </svg>
+                        View Repository on GitHub
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== CONTACT DEVELOPER SECTION ===== -->
+        <section class="section" id="developer">
+            <div class="section-header">
+                <div class="section-tag">Creator</div>
+                <h2 class="section-title">Contact the Developer</h2>
+                <p class="section-desc">Have a feature request, bug report, or want to contribute? Get in touch directly.</p>
+            </div>
+
+            <div class="developer-grid">
+                <div class="dev-profile">
+                    <div class="dev-avatar">👨‍💻</div>
+                    <h3>Aaryan Sahu</h3>
+                    <div class="dev-role">Full-Stack Developer & Creator of ComicStream</div>
+                    <p>
+                        Passionate about building intuitive, performant web applications with rich user interfaces, hardware acceleration, and cross-platform compatibility across desktop, mobile, TV, and gaming devices.
+                    </p>
+                    <div class="dev-links">
+                        <a href="https://github.com/AaryanSahu616" target="_blank" class="btn btn-secondary">
+                            <span>🐙</span> GitHub Profile
+                        </a>
+                        <a href="https://github.com/AaryanSahu616/comic_reader/issues" target="_blank" class="btn btn-secondary">
+                            <span>🐛</span> Report an Issue
+                        </a>
+                    </div>
+                </div>
+
+                <div class="contact-box">
+                    <h4>Direct Contact & Links</h4>
+                    <p>Feel free to reach out with feedback or questions about the project.</p>
+                    
+                    <a href="https://github.com/AaryanSahu616" target="_blank" class="contact-item">
+                        <span class="contact-item-icon">🐙</span>
+                        <div class="contact-item-text">
+                            <span class="contact-item-label">GitHub</span>
+                            <span class="contact-item-val">github.com/AaryanSahu616</span>
+                        </div>
+                    </a>
+
+                    <a href="https://github.com/AaryanSahu616/comic_reader" target="_blank" class="contact-item">
+                        <span class="contact-item-icon">⭐</span>
+                        <div class="contact-item-text">
+                            <span class="contact-item-label">Repository</span>
+                            <span class="contact-item-val">github.com/AaryanSahu616/comic_reader</span>
+                        </div>
+                    </a>
+
+                    <a href="https://github.com/AaryanSahu616/comic_reader/issues/new" target="_blank" class="contact-item">
+                        <span class="contact-item-icon">💡</span>
+                        <div class="contact-item-text">
+                            <span class="contact-item-label">Feature Requests</span>
+                            <span class="contact-item-val">Submit ideas on GitHub Issues</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer>
+        <div class="footer-content">
+            <div>
+                <strong>📚 ComicStream</strong> — Stream & Read Comics from Google Drive
+            </div>
+            <div>
+                Built by <a href="https://github.com/AaryanSahu616" target="_blank">Aaryan Sahu</a> • Open Source under MIT License
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+</body>
+
+</html>

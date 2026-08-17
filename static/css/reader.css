@@ -1,0 +1,359 @@
+body {
+    background-color: #000000;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    overscroll-behavior-y: contain;
+    overflow: hidden;
+}
+
+/* When zoomed, body must not block container scrolling */
+body.has-zoom {
+    overflow: hidden !important;
+}
+
+/* Modern UI Bar — NO backdrop-filter for TV perf */
+.ui-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.92);
+    padding: 16px 24px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 20;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ui-overlay.hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+}
+
+.ui-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 60%;
+}
+
+.text-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+h1 {
+    font-size: 1.15rem;
+    margin: 0 0 4px 0;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.3px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+#page-counter {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+}
+
+.ui-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 10px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.icon-btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Zoom controls group */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.zoom-level-display {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: center;
+    user-select: none;
+}
+
+.zoom-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    min-width: 36px;
+    min-height: 36px;
+    box-sizing: border-box;
+}
+
+.zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.zoom-btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.comic-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100dvh;
+    touch-action: pan-y pinch-zoom;
+    overflow: hidden;
+    background-color: #050505;
+}
+
+.comic-container.zoomed {
+    overflow: auto !important;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    align-items: flex-start;
+    touch-action: pan-x pan-y pinch-zoom;
+    cursor: grab;
+}
+
+.comic-container.zoomed.grabbing {
+    cursor: grabbing;
+}
+
+.comic-container.zoomed::-webkit-scrollbar {
+    display: none;
+}
+
+.comic-container.zoomed .comic-page {
+    flex-shrink: 0;
+    margin: auto;
+}
+
+.comic-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: pointer;
+    image-rendering: auto;
+}
+
+.comic-page.sliding {
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Zoom indicator pill */
+.zoom-indicator {
+    position: fixed;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.92);
+    color: #e2e8f0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 10px 22px;
+    border-radius: 24px;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.zoom-indicator.visible {
+    opacity: 1;
+}
+
+/* CSS fullscreen fallback */
+html.css-fullscreen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99999;
+}
+
+html.css-fullscreen body {
+    width: 100%;
+    height: 100%;
+}
+
+/* Ensure container fills viewport in all fullscreen modes */
+html:-webkit-full-screen { width: 100%; height: 100%; }
+html:-webkit-full-screen body { width: 100%; height: 100%; overflow: hidden; }
+html:fullscreen { width: 100%; height: 100%; }
+html:fullscreen body { width: 100%; height: 100%; overflow: hidden; }
+
+html:-webkit-full-screen .comic-container,
+html:fullscreen .comic-container,
+html.css-fullscreen .comic-container { width: 100vw; height: 100vh; }
+
+html:-webkit-full-screen .comic-container.zoomed,
+html:fullscreen .comic-container.zoomed,
+html.css-fullscreen .comic-container.zoomed {
+    overflow: auto !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    z-index: 10;
+}
+
+/* ===== TV MODE OVERRIDES ===== */
+.tv-mode {
+    font-size: 18px;
+    padding: 0;
+}
+
+.tv-mode .ui-overlay {
+    padding: 20px calc(3% + 8px);
+}
+
+.tv-mode .icon-btn,
+.tv-mode .zoom-btn {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 1.3rem;
+}
+
+.tv-mode .icon-btn:focus,
+.tv-mode .zoom-btn:focus {
+    outline: 3px solid #3b82f6;
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35);
+    outline-offset: 2px;
+}
+
+/* Disable hover transforms on TV (no hover) */
+.tv-mode .icon-btn:hover,
+.tv-mode .zoom-btn:hover {
+    transform: none;
+}
+
+/* Overscan safe area */
+.tv-mode .comic-container {
+    width: 100vw;
+    height: 100vh;
+}
+
+.tv-mode h1 {
+    font-size: 1.3rem;
+}
+
+.tv-mode #page-counter {
+    font-size: 1rem;
+}
+
+.tv-mode .zoom-level-display {
+    font-size: 0.95rem;
+    min-width: 42px;
+}
+
+.tv-mode .zoom-indicator {
+    font-size: 1.3rem;
+    padding: 14px 28px;
+    bottom: 60px;
+}
+
+/* Preload progress bar */
+.preload-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    z-index: 25;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.05);
+    opacity: 1;
+    transition: opacity 0.6s ease 1s;
+}
+
+.preload-bar.complete {
+    opacity: 0;
+}
+
+.preload-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    transition: width 0.3s ease;
+    border-radius: 0 2px 2px 0;
+}
+
+.preload-bar-label {
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    font-size: 0.7rem;
+    color: rgba(148, 163, 184, 0.6);
+    z-index: 25;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+    opacity: 1;
+    transition: opacity 0.6s ease 1s;
+}
+
+.preload-bar-label.complete {
+    opacity: 0;
+}

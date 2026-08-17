@@ -1,0 +1,249 @@
+:root {
+    --bg-color: #0f172a;
+    --surface: #1e293b;
+    --surface-hover: #334155;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --radius: 12px;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
+    padding: 20px;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+.container {
+    max-width: 800px;
+    margin: 40px auto;
+}
+
+.header-box {
+    background-color: var(--surface);
+    padding: 32px;
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    margin-top: 0;
+    font-size: 1.75rem;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+p {
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.breadcrumbs {
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+    color: var(--text-muted);
+    background: var(--bg-color);
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumbs a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.breadcrumbs a:hover {
+    color: var(--primary-hover);
+}
+
+.btn {
+    background-color: var(--primary);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.folder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.folder-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background-color: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.folder-item:hover {
+    background-color: var(--surface-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.folder-link {
+    display: flex;
+    align-items: center;
+    color: var(--text-main);
+    text-decoration: none;
+    flex-grow: 1;
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+.icon {
+    font-size: 1.5rem;
+    margin-right: 16px;
+}
+
+.select-btn {
+    background-color: transparent;
+    color: var(--primary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid var(--primary);
+    transition: all 0.2s;
+}
+
+.select-btn:hover {
+    background-color: var(--primary);
+    color: #fff;
+}
+
+.empty-msg {
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 40px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px dashed var(--border);
+}
+
+/* ===== FOCUS STYLES (keyboard / D-pad nav) ===== */
+.folder-link:focus,
+.select-btn:focus,
+.btn:focus,
+.breadcrumbs a:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+}
+
+.folder-item:focus-within {
+    background-color: var(--surface-hover);
+    border-color: var(--primary);
+}
+
+/* ===== TV MODE OVERRIDES ===== */
+.tv-mode {
+    font-size: 18px;
+    padding: 3%;
+}
+
+.tv-mode .container {
+    max-width: 100%;
+    margin: 20px auto;
+}
+
+.tv-mode .header-box {
+    padding: 36px;
+}
+
+.tv-mode h1 {
+    font-size: 2rem;
+}
+
+.tv-mode p {
+    font-size: 1.1rem;
+}
+
+.tv-mode .folder-item {
+    padding: 20px 24px;
+    min-height: 48px;
+}
+
+.tv-mode .folder-link {
+    font-size: 1.2rem;
+}
+
+.tv-mode .icon {
+    font-size: 1.8rem;
+}
+
+.tv-mode .select-btn {
+    padding: 12px 20px;
+    font-size: 1rem;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tv-mode .btn {
+    padding: 16px 28px;
+    font-size: 1.1rem;
+    min-height: 48px;
+}
+
+.tv-mode .breadcrumbs {
+    font-size: 1.1rem;
+    padding: 16px 20px;
+}
+
+/* Enhanced TV focus */
+.tv-mode .folder-link:focus,
+.tv-mode .select-btn:focus,
+.tv-mode .btn:focus,
+.tv-mode .breadcrumbs a:focus {
+    outline: 3px solid var(--primary);
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35);
+}
+
+.tv-mode .folder-item:focus-within {
+    transform: scale(1.02);
+    z-index: 5;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Disable hover transforms on TV */
+.tv-mode .folder-item:hover,
+.tv-mode .btn:hover,
+.tv-mode .select-btn:hover {
+    transform: none;
+    box-shadow: none;
+}
