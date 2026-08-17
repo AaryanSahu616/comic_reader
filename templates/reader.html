@@ -654,6 +654,18 @@
                 newImg.style.transform = 'translate3d(0, 0, 0)';
 
                 const oldImg = currentImgElement;
+                currentImgElement = newImg;
+
+                // Helper: apply zoom only after the new image is fully loaded
+                function applyZoomWhenReady() {
+                    if (currentImgElement !== newImg) return; // Page changed again
+                    applyZoom();
+                    requestAnimationFrame(() => {
+                        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+                        container.scrollTop = 0;
+                    });
+                }
+
                 setTimeout(() => {
                     if (oldImg && oldImg.parentNode) oldImg.parentNode.removeChild(oldImg);
                     // Remove sliding class and will-change after transition
@@ -661,14 +673,17 @@
                     newImg.style.willChange = 'auto';
                     isAnimating = false;
                     
-                    // Re-apply zoom to the new page and jump to top
+                    // Re-apply zoom to the new page — but only after it's loaded
                     if (currentZoom > ZOOM_MIN + 0.01) {
-                        applyZoom();
-                        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
-                        container.scrollTop = 0;
+                        if (newImg.naturalWidth && newImg.naturalHeight) {
+                            // Image already loaded (was cached)
+                            applyZoomWhenReady();
+                        } else {
+                            // Wait for image to finish loading
+                            newImg.addEventListener('load', applyZoomWhenReady, { once: true });
+                        }
                     }
                 }, 300);
-                currentImgElement = newImg;
             }
 
             // Trigger preloading from new position
@@ -960,33 +975,32 @@
                 return;
             }
 
-            // ── Arrow keys / D-pad: ALWAYS pan/scroll ──
+            // ── Arrow keys / D-pad ──
             if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
                 e.preventDefault();
 
-                if (isZoomed()) {
-                    // Pan the zoomed image
+                const isTV = window._tvInfo && window._tvInfo.isTVMode;
+
+                if (isTV && isZoomed()) {
+                    // TV D-pad: pan the zoomed image (no mouse/trackpad available)
                     if (!keysDown.has(key)) {
                         keysDown.add(key);
-                        // Initial step for immediate feedback
                         const dx = key === 'ArrowLeft' ? PAN_STEP : key === 'ArrowRight' ? -PAN_STEP : 0;
                         const dy = key === 'ArrowUp' ? PAN_STEP : key === 'ArrowDown' ? -PAN_STEP : 0;
                         panBy(dx, dy);
                         startContinuousPan();
                     }
+                } else if (isTV) {
+                    // TV at 1×: track keys so held-key → zoom → pan works seamlessly
+                    if (!keysDown.has(key)) {
+                        keysDown.add(key);
+                    }
                 } else {
-                    // At 1× zoom: PC uses arrows for page nav, TV uses Rewind/FF
-                    if (!window._tvInfo || !window._tvInfo.isTVMode) {
-                        if (key === 'ArrowRight') showPage(currentIndex + 1);
-                        if (key === 'ArrowLeft') showPage(currentIndex - 1);
-                        if (key === 'ArrowUp' || key === 'ArrowDown') {
-                            uiBar.classList.toggle('hidden');
-                        }
-                    } else {
-                        // TV: track keys so held-key → zoom → pan works seamlessly
-                        if (!keysDown.has(key)) {
-                            keysDown.add(key);
-                        }
+                    // PC/Laptop: arrows always navigate pages (panning via mouse/trackpad)
+                    if (key === 'ArrowRight') showPage(currentIndex + 1);
+                    else if (key === 'ArrowLeft') showPage(currentIndex - 1);
+                    else if (key === 'ArrowUp' || key === 'ArrowDown') {
+                        uiBar.classList.toggle('hidden');
                     }
                 }
                 return;
