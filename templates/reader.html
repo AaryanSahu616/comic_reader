@@ -843,10 +843,21 @@
             }
         });
 
-        // ===== WHEEL SCROLL SUPPORT (horizontal with Shift) =====
+        // ===== WHEEL: trackpad pinch-to-zoom + horizontal scroll =====
         container.addEventListener('wheel', e => {
+            // Trackpad pinch-to-zoom: browsers fire wheel events with ctrlKey=true
+            if (e.ctrlKey) {
+                e.preventDefault();
+                // deltaY is negative when pinching out (zoom in), positive when pinching in (zoom out)
+                const zoomSensitivity = 0.01;
+                const delta = -e.deltaY * zoomSensitivity;
+                setZoom(zoomLevel + delta);
+                return;
+            }
+
             if (!isZoomed()) return;
-            // Shift+wheel scrolls horizontally
+
+            // Shift+wheel scrolls horizontally when zoomed
             if (e.shiftKey) {
                 e.preventDefault();
                 container.scrollLeft += e.deltaY;
