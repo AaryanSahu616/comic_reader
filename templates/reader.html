@@ -1095,21 +1095,21 @@
         //     2 = Right stick X     3 = Right stick Y
 
         const GP_DEADZONE = 0.15;
-        const GP_SCROLL_SPEED = 12;   // pixels per frame for left stick scroll
-        const GP_ZOOM_SPEED = 0.02;   // zoom delta per frame for right stick
-        let gpPrevButtons = [];       // previous frame button states for edge detection
+        const GP_SCROLL_SPEED = 14;    // pixels per frame for left stick scroll
+        const GP_ZOOM_SPEED = 0.03;    // zoom delta per frame for right stick
+        let gpPrevButtons = [];        // previous frame button states for edge detection
         let gpAnimId = null;
         let gpConnected = false;
+        let gpZoomAccum = 0;           // accumulator for smooth fractional zoom
 
         window.addEventListener('gamepadconnected', e => {
-            console.log(`Gamepad connected: ${e.gamepad.id}`);
+            console.log(`Gamepad connected: ${e.gamepad.id} [${e.gamepad.mapping}]`);
             gpConnected = true;
             if (!gpAnimId) startGamepadLoop();
         });
 
         window.addEventListener('gamepaddisconnected', e => {
             console.log(`Gamepad disconnected: ${e.gamepad.id}`);
-            // Check if any gamepads still connected
             const gamepads = navigator.getGamepads();
             gpConnected = Array.from(gamepads).some(gp => gp !== null);
             if (!gpConnected && gpAnimId) {
@@ -1127,17 +1127,55 @@
         }
 
         function gpButtonPressed(gp, index) {
-            return gp.buttons[index] && gp.buttons[index].pressed;
+            return gp.buttons.length > index && gp.buttons[index] && gp.buttons[index].pressed;
         }
 
         function gpButtonJustPressed(gp, index) {
-            const now = gpButtonPressed(gp, index);
+            if (gp.buttons.length <= index) return false;
+            const now = gp.buttons[index].pressed;
             const prev = gpPrevButtons[index] || false;
             return now && !prev;
         }
 
         function applyStickDeadzone(value) {
             return Math.abs(value) > GP_DEADZONE ? value : 0;
+        }
+
+        // Smooth zoom: accumulates fractional changes and applies once they cross 0.05
+        function gpSmoothZoom(delta) {
+            if (delta === 0) {
+                // Reset accumulator when stick is neutral so next tilt starts fresh
+                gpZoomAccum = 0;
+                return;
+            }
+            gpZoomAccum += delta;
+            // Apply zoom when accumulator has built up enough
+            if (Math.abs(gpZoomAccum) >= 0.05) {
+                const rawTarget = zoomLevel + gpZoomAccum;
+                // Round to nearest 0.1 for clean display
+                const snapped = Math.round(rawTarget * 10) / 10;
+                const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, snapped));
+                if (clamped !== zoomLevel) {
+                    // Bypass setZoom's rounding — set directly
+                    zoomLevel = clamped;
+                    applyZoom();
+                    if (isZoomed()) {
+                        requestAnimationFrame(() => {
+                            container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+                            container.scrollTop = 0;
+                        });
+                    }
+                    const label = zoomLevel.toFixed(1) + '×';
+                    zoomDisplay.textContent = label;
+                    zoomIndicator.textContent = label;
+                    zoomIndicator.classList.add('visible');
+                    clearTimeout(zoomIndicatorTimeout);
+                    zoomIndicatorTimeout = setTimeout(() => {
+                        zoomIndicator.classList.remove('visible');
+                    }, 1500);
+                }
+                gpZoomAccum = 0;
+            }
         }
 
         function startGamepadLoop() {
@@ -1150,19 +1188,15 @@
 
                 // ── D-pad: page navigation (edge-triggered) ──
                 if (gpButtonJustPressed(gp, 14)) {
-                    // D-pad Left → previous page
                     showPage(currentIndex - 1);
                 }
                 if (gpButtonJustPressed(gp, 15)) {
-                    // D-pad Right → next page
                     showPage(currentIndex + 1);
                 }
                 if (gpButtonJustPressed(gp, 12)) {
-                    // D-pad Up → toggle UI bar
                     uiBar.classList.toggle('hidden');
                 }
                 if (gpButtonJustPressed(gp, 13)) {
-                    // D-pad Down → toggle UI bar
                     uiBar.classList.toggle('hidden');
                 }
 
@@ -1184,24 +1218,19 @@
                     resetZoom();
                 }
 
-                // ── Bumpers: zoom in/out (edge-triggered) ──
+                // ── Bumpers: zoom in/out step (edge-triggered) ──
                 if (gpButtonJustPressed(gp, 5)) {
-                    // RB / R1 → zoom in
                     setZoom(zoomLevel + ZOOM_STEP);
                 }
                 if (gpButtonJustPressed(gp, 4)) {
-                    // LB / L1 → zoom out
                     setZoom(zoomLevel - ZOOM_STEP);
                 }
 
-                // ── Triggers: fine zoom (continuous) ──
-                const lt = gp.buttons[6] ? gp.buttons[6].value : 0;
-                const rt = gp.buttons[7] ? gp.buttons[7].value : 0;
+                // ── Triggers: fine zoom (continuous, analog pressure) ──
+                const lt = gp.buttons.length > 6 && gp.buttons[6] ? gp.buttons[6].value : 0;
+                const rt = gp.buttons.length > 7 && gp.buttons[7] ? gp.buttons[7].value : 0;
                 if (rt > 0.1 || lt > 0.1) {
-                    const triggerZoom = (rt - lt) * GP_ZOOM_SPEED;
-                    if (Math.abs(triggerZoom) > 0.001) {
-                        setZoom(zoomLevel + triggerZoom, false);
-                    }
+                    gpSmoothZoom((rt - lt) * GP_ZOOM_SPEED);
                 }
 
                 // ── Left stick: scroll / pan when zoomed (continuous) ──
@@ -1215,19 +1244,15 @@
                 }
 
                 // ── Right stick Y-axis: zoom (continuous) ──
-                const rsY = applyStickDeadzone(gp.axes[3] || 0);
-                if (rsY !== 0) {
-                    // Push up (negative Y) = zoom in, push down = zoom out
-                    setZoom(zoomLevel - rsY * GP_ZOOM_SPEED, false);
-                }
+                const rsY = applyStickDeadzone(gp.axes.length > 3 ? (gp.axes[3] || 0) : 0);
+                // Push up (negative Y) = zoom in, push down = zoom out
+                gpSmoothZoom(-rsY * GP_ZOOM_SPEED);
 
                 // ── Start / Options button ──
                 if (gpButtonJustPressed(gp, 9)) {
-                    // Start → toggle fullscreen
                     toggleFullscreen();
                 }
                 if (gpButtonJustPressed(gp, 8)) {
-                    // Back / Share → toggle UI
                     uiBar.classList.toggle('hidden');
                 }
 
@@ -1256,7 +1281,7 @@
             gpAnimId = requestAnimationFrame(tick);
         }
 
-        // Also check on load in case gamepad was already connected before page loaded
+        // Check on load in case gamepad was already connected
         if (navigator.getGamepads && Array.from(navigator.getGamepads()).some(gp => gp !== null)) {
             gpConnected = true;
             startGamepadLoop();
